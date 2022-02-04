@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Socket.IO chat</title>
+	<style>
+      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+      #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+      #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+      #input:focus { outline: none; }
+      #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+
+      #messages { list-style-type: none; margin: 0; padding: 0;}
+      #messages > li { padding: 0.5rem 1rem;  margin-bottom: 1px}
+      #messages > li:nth-child(odd) { background: #efefef; }
+	</style>
+</head>
+<body>
+<ul id="messages"></ul>
+
+<form id="form" action="">
+	<input id="input" autocomplete="off" /><button>Send</button>
+</form>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+	const userName = prompt('add name');
+
+	const socket = io();
+
+	socket.emit('new user', userName);
+
+	const messages = document.getElementById('messages');
+	const form = document.getElementById('form');
+	const input = document.getElementById('input');
+
+	input.addEventListener('keydown', function(e) {
+		socket.emit('user is typing', userName);
+		if (e.keyCode === 13) {
+			socket.emit('user stop typing', userName);
+		}
+	});
+
+	input.addEventListener('focusout', function() {
+		socket.emit('user stop typing', userName);
+	});
+
+	form.addEventListener('submit', function(e) {
+		e.preventDefault();
+		if (input.value) {
+			const item = document.createElement('li');
+			item.innerHTML = input.value;
+			item.style.textAlign = 'end';
+			item.style.background = '#b3eda87a';
+			appendElem(item);
+			socket.emit('chat message', {user: userName, msg: input.value});
+			input.value = '';
+		}
+	});
+
+	socket.on('new user', function(user) {
+		const item = document.createElement('li');
+		item.innerHTML = `<b>${user} has joined chat</b>`;
+		item.style.background = '#5d9cec75';
+		item.style.textAlign = 'center';
+		appendElem(item);
+	});
+
+	socket.on('user is typing', function (user) {
+		if (user !== userName && !input.value) {
+			input.value = `${user} is typing...`;
+		}
+	});
+
+	socket.on('user stop typing', function (user) {
+		if (input.value === `${user} is typing...`) {
+			input.value = '';
+		}
+	});
+
+	socket.on('chat message', function({user, msg}) {
+		const item = document.createElement('li');
+		if (user !== userName) {
+			item.innerHTML = `<b>${user}: </b><br/>${msg}`;
+		}
+		appendElem(item);
+	});
+
+	socket.on('user left', function(user) {
+		if (!user) {
+			return;
+		}
+		const item = document.createElement('li');
+		item.innerHTML = `<b>${user} has left chat</b>`;
+		item.style.background = '#ec5d717d';
+		item.style.textAlign = 'center';
+		appendElem(item);
+	});
+
+	function appendElem(item) {
+		messages.appendChild(item);
+		window.scrollTo(0, document.body.scrollHeight);
+	}
+
+</script>
+
+</body>
+</html>
